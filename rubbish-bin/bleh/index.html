@@ -1,0 +1,281 @@
+<?php
+/**
+*
+* @package phpBB3
+* @version facebook_helper.php James Molloy
+* @copyright (c) 2008 James Molloy
+* @license http://opensource.org/licenses/gpl-license.php GNU Public License
+*
+*/
+
+include('facebook.php');
+
+define('APPAPIKEY', '0941eceee48a583875f2d96ff7667945');
+define('APPAPISECRET', '995cceb87692c0627be799f06d36ee33');
+
+/**
+ * Provides a wrapper around the facebook API so that calls that we specifically need/want are easy to accomplish.
+ */
+class FacebookHelper
+{
+	var $fb;
+	var $errored;
+	var $error_string;
+
+	public function __construct()
+	{
+		$this->fb = new Facebook(APPAPIKEY, APPAPISECRET);
+		$errored = false;
+		$error_string = '';
+	}
+
+	function is_connected()
+	{
+		return $this->fb->get_loggedin_user() != NULL;
+	}
+
+	function deauthenticate_app()
+	{
+		$this->fb->set_cookies(0, 0, 1, 0);
+		return $this->fb->api_client->auth_revokeAuthorization();
+	}
+
+	function connect()
+	{
+		return $this->fb->require_login();
+	}
+
+    function get_uid()
+    {
+        return $this->fb->get_loggedin_user();
+    }
+
+	function get_user_info($uid=NULL, $fields='uid,name,pic_square')
+	{
+		if ($uid === NULL)
+		{
+			$uid = $this->fb->get_loggedin_user();
+		}
+		try {
+			$arr =  $this->fb->api_client->users_getInfo(array($uid), $fields);
+			return $arr[0];
+		}
+		catch (FacebookRestClientException $e)
+		{
+			if ($e->getCode() == FacebookAPIErrorCodes::API_EC_PARAM_SESSION_KEY)
+			{
+				// Easy error to fix - session key out of date. Kill teh session and reconnect then redo the command.
+				$this->kill_session();
+				$this->connect();
+				return $this->get_user_info();
+			}
+			else
+			{
+				throw $e;
+			}
+		}
+	}
+
+	function get_users_info($uids, $fields='uid,name,pic_square')
+	{
+		try {
+			$arr =  $this->fb->api_client->users_getInfo($uids, $fields);
+			return $arr;
+		}
+		catch (FacebookRestClientException $e)
+		{
+			if ($e->getCode() == FacebookAPIErrorCodes::API_EC_PARAM_SESSION_KEY)
+			{
+				// Easy error to fix - session key out of date. Kill teh session and reconnect then redo the command.
+				$this->kill_session();
+				$this->connect();
+				return $this->get_user_info();
+			}
+			else
+			{
+				throw $e;
+			}
+		}
+	}
+
+	function session_valid()
+	{
+		try {
+			// try any function - in this case hasAppPermission.
+			$this->fb->api_client->users_hasAppPermission('photo_upload', '');
+			return true;
+		}
+		catch (FacebookRestClientException $e)
+		{
+			if ($e->getCode() == FacebookAPIErrorCodes::API_EC_PARAM_SESSION_KEY)
+			{
+				return false;
+			}
+			else
+			{
+				$errored = true;
+				$error_string = $e->getMessage();
+				return false;
+			}
+		}
+	}
+
+	function has_photo_upload()
+	{
+		try {
+			return $this->fb->api_client->users_hasAppPermission('photo_upload', '');
+		}
+		catch (FacebookRestClientException $e)
+		{
+			if ($e->getCode() == FacebookAPIErrorCodes::API_EC_PARAM_SESSION_KEY)
+			{
+				// Easy error to fix - session key out of date. Kill teh session and reconnect then redo the command.
+				$this->kill_session();
+				$this->connect();
+				return $this->has_photo_upload();
+			}
+			else
+			{
+				$errored = true;
+				$error_string = $e->getMessage();
+				return false;
+			}
+		}
+	}
+
+	function require_photo_upload($ok=NULL, $cancel=NULL)
+	{
+		if (!$this->has_photo_upload())
+		{
+			$cur_page = 'http://' . $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI'];
+			if ($ok === NULL)
+			{
+				$ok = urlencode($cur_page);
+			}
+			else
+			{
+				$ok = urlencode($ok);
+			}
+			if ($cancel === NULL)
+			{
+				$cancel = urlencode($cur_page . '&cancel=true');
+			}
+			else
+			{
+				$cancel = urlencode($cancel);
+			}
+
+			$location = 'http://www.facebook.com/authorize.php?api_key=' . APPAPIKEY . "&v=1.0&ext_perm=photo_upload&next=$ok&next_cancel=$cancel";
+			header("Location: $location\r\n");
+			exit;
+		}
+	}
+
+	function get_album($aid)
+	{
+		$arr = $this->fb->api_client->call_method('facebook.photos.getAlbums', array('uid' => NULL, 'aids' => array($aid)));
+		return $arr[0];
+	}
+
+	function get_albums_by_uid($uid=NULL)
+	{
+		return $this->fb->api_client->call_method('facebook.photos.getAlbums', array('uid' => $uid, 'aids' => NULL));
+	}
+
+	function get_album_photos($aid)
+	{
+		return $this->fb->api_client->call_method('facebook.photos.get',
+												  array('subj_id' => NULL, 'aid' => $aid, 'pids' => NULL));
+	}
+
+	function get_photo($pid)
+	{
+		$arr = $this->fb->api_client->call_method('facebook.photos.get',
+												  array('subj_id' => NULL, 'aid' => NULL, 'pids' => array($pid)));
+		return $arr[0];
+	}
+
+	function get_photos($pids)
+	{
+		$arr = $this->fb->api_client->call_method('facebook.photos.get',
+												  array('subj_id' => NULL, 'aid' => NULL, 'pids' => $pids));
+		return $arr;
+	}
+
+	function create_album($name, $description='', $location='', $visible='')
+	{
+		if (!has_photo_upload())
+			return false;
+
+		return $this->fb->api_client->photos_createAlbum($name, $description, $location, $visible);
+	}
+
+	function upload_photo()
+	{
+		/// \todo
+	}
+
+	// Assumes $partial_name is properly escaped.
+	function find_friend($partial_name)
+	{
+		$uid = $this->fb->get_loggedin_user();
+		$fql = "SELECT uid,name,pic FROM user WHERE strpos(lower(name),lower('$partial_name')) >= 0 AND uid IN (SELECT uid2 FROM friend WHERE uid1=$uid)";
+		return $this->fb->api_client->fql_query($fql);
+	}
+
+	// Assumes $partial_name is properly escaped.
+	function find_album($partial_name, $limit=50)
+	{
+		$uid = $this->fb->get_loggedin_user();
+		if (strlen($partial_name) == 0)
+		{
+			$fql = "SELECT aid,owner,name,cover_pid,size,location,description FROM album WHERE owner IN (SELECT uid2 FROM friend WHERE uid1=$uid) ORDER BY created DESC LIMIT $limit";
+		}
+		else
+		{
+			$fql = "SELECT aid,owner,name,cover_pid,size,location,description FROM album WHERE strpos(lower(name),lower('$partial_name')) >= 0 AND owner IN (SELECT uid2 FROM friend WHERE uid1=$uid) ORDER BY created DESC LIMIT $limit";
+		}
+		return $this->fb->api_client->fql_query($fql);
+	}
+
+	// Assumes $partial_name and $uid are properly escaped.
+	function find_album_by_uid($partial_name, $uid, $limit=50)
+	{
+		if (strlen($partial_name) == 0)
+		{
+			$fql = "SELECT aid,owner,name,cover_pid,size,location,description FROM album WHERE owner=$uid ORDER BY created DESC LIMIT $limit";
+		}
+		else
+		{
+			$fql = "SELECT aid,owner,name,cover_pid,size,location,description FROM album WHERE strpos(lower(name),lower('$partial_name')) >= 0 AND owner=$uid ORDER BY created DESC LIMIT $limit";
+		}
+		return $this->fb->api_client->fql_query($fql);
+	}
+
+	function kill_session()
+	{
+		$cookies = array('user', 'session_key', 'expires', 'ss');
+		foreach ($cookies as $name)
+		{
+			setcookie($this->fb->api_key . '_' . $name, false, time() - 3600);
+			unset($_COOKIE[$this->fb->api_key . '_' . $name]);
+		}
+		setcookie($this->fb->api_key, false, time() - 3600);
+		unset($_COOKIE[$this->fb->api_key]);
+
+		$this->fb->user = 0;
+		$this->fb->api_client->session_key = 0;
+	}
+
+	function was_error()
+	{
+		return $this->errored;
+	}
+
+	function get_error()
+	{
+		return $this->error_str;
+	}
+}
+
+?>

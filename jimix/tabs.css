@@ -1,0 +1,50 @@
+div.tabs
+{
+}
+
+div.tabs a
+{
+  font-size: 80%;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+div.tabs ul
+{
+  list-style: none;
+  padding-left: 10px;
+
+  border-bottom: 1px solid #995555;
+}
+
+div.tabs ul li
+{
+  display: inline;
+  padding: 0px 4px;
+}
+
+div.tabs ul li span
+{
+  border: 1px solid #995555;
+  background-color: #CC9999;
+  padding: 0px 5px;
+}
+
+div.tabs ul li span:hover
+{
+  background-color: #CC8888;
+}
+
+div.tabs ul li.current span
+{
+  background-color: white;
+  border-bottom: 1px solid white;
+}
+
+div.tabs ul li form
+{
+  position: absolute;
+  right: 10px;
+  top: 2px;
+  height: 30px;
+}

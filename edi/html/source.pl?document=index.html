@@ -1,0 +1,53 @@
+#!/usr/bin/perl
+
+use lib ("/home/james/www/public_html/");
+use CGI qw/:standard/;
+
+print header;
+
+my $path = '/home/james/www/public_html/edi/html/';
+
+my $document = param('document');
+
+# Validate document.
+# does it contain more than one '.'?
+if ($document =~ m/\..*\./ or not $document =~ m/\.(html|php)$/) {
+  print "Wtf? You're trying to hack me? Piss off knob end!\n";
+  print $document;
+  exit 0;
+}
+my $fd;
+unless (open($fd, "<", $path.$document))
+{
+  print "File not found!";
+  exit 0;
+}
+
+local $/ = undef;
+my $str;
+if ($document =~ m/\.php$/) {
+  my $query = param('query');
+  $str = `cd $path && export query=$query && php $document`;
+} else {
+  $str = <$fd>;
+}
+
+open my $header_fd, "<", "/home/james/www/public_html/edi/source_header.html";
+my $header = <$header_fd>;
+open my $footer_fd, "<", "/home/james/www/public_html/edi/source_footer.html";
+my $footer = <$footer_fd>;
+
+# Change the search method to POST.
+$str =~ s/action="search.php" method="get">/action="source.pl" method="get"><input type="hidden" name="document" value="search.php">/;
+
+# Remove css.
+$str =~ s/<link.*?>//g;
+
+# Change the URLs around. Oooh come here you BEAUTIFUL regex system!
+$str =~ s/([a-zA-Z0-9-_]+?\.html)/source.pl?document=$1/g;
+
+print $header;
+print $str;
+print $footer;
+
+close $fd;

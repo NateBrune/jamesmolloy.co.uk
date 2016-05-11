@@ -1,0 +1,56 @@
+#!/usr/bin/perl
+
+use lib ("/home/james/www/public_html/");
+require DocumentParser;
+use CGI qw/:standard/;
+
+print header;
+
+my $path = '/home/james/www/public_html/';
+
+my $document = param('document');
+
+# try and find the document.
+opendir(DIR, $path.$document) || die ("Document not found!\n");
+closedir(DIR);
+
+$parser = DocumentParser->new(src_directory => $document);
+
+print "<link rel='stylesheet' type='text/css' href='highlight.css'>";
+print "<link rel='stylesheet' type='text/css' href='layout.css'>";
+
+if (param('section')) {
+    open(HEADER, "/home/james/www/public_html/header.html");
+    my @header_raw = <HEADER>;
+    my $header = join('', @header_raw);
+    close(HEADER);
+    open(FOOTER, "/home/james/www/public_html/footer.html");
+    my @footer_raw = <FOOTER>;
+    my $footer = join('', @footer_raw);
+    close(FOOTER);
+    
+    print start_html($parser->show_title());
+    my $section = param('section');
+    print $header;
+    my $index = $parser->show_index($section);
+    my $section_text = $parser->show_section($section);
+    print $index;
+    print $section_text;
+    print $footer;
+} else {
+    print start_html("Index");
+    open(HEADER, "/home/james/www/public_html/index_header.html");
+    my @header_raw = <HEADER>;
+    my $header = join('', @header_raw);
+    close(FOOTER);
+    open(FOOTER, "/home/james/www/public_html/index_footer.html");
+    my @footer_raw = <FOOTER>;
+    my $footer = join('', @footer_raw);
+    close(FOOTER);
+    print $header;
+    print $parser->show_index('');
+    print $footer;
+}
+
+print "</body>\n</html>";
+

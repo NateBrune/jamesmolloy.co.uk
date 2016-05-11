@@ -1,0 +1,73 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+
+<head>
+  <link rel='stylesheet' type='text/css' href='/layout.css'>
+  <link rel='stylesheet' type='text/css' href='/highlight.css'>
+  <link rel='stylesheet' type='text/css' href='/red.css'>
+  <title>jamesmolloy.co.uk</title>
+</head>
+
+<body>
+
+  <div class="header">
+    www.jamesmolloy.co.uk
+    <div class="header_subtitle">
+      <a href="/index.html">Home</a> &raquo;
+      <i>Jimix</i> - A C++ operating system for the x86 architecture
+    </div>
+  </div>
+  
+  <div class="main_frame">
+
+    <div class='index'>
+      <a href='html/source.pl?document=index.html'>Browse generated documentation and source code</a><br />
+      <a href='http://jimix.googlecode.com/svn/jimix/trunk'>Subversion repository</a><br />
+      <a href='http://jimix.googlecode.com/svn/documentation/trunk/pdf/manual.pdf'>Reference manual <font size="small">(pdf)</font></a>
+    </div>
+    <h1>Jimix</h1>
+
+    <p style="font-weight:bold;font-size:20pt;text-align:center;">Note: This project is discontinued in favour of <a href="http://github.com/jmolloy/pedigree">Pedigree</a>.</p>
+    
+    <p>Jimix is a hobby operating system, designed for the x86 and possibly x86-64/ia64 architectures.</p>
+
+    <p>It is written almost entirely in C++, with some assembly. The user application interface is POSIX compliant - actually implemented as a wrapper around the object-orientated native API.</p>
+
+    <h2>Application programming interface</h2>
+
+    <p>The native system call API revolves around 'resources'. Many kernel classes such as <code>File</code>s, <code>Process</code>es and <code>MemoryMap</code>s inherit from the <code>Resource</code> kernel class, which enables exposing of an interface to user programs.</p>
+
+    <p>The <code>Resource</code> class has a function which adds a function to its interface. It accepts any member function of a class which inherits from the abstract class <code>Callable</code>. The function is also given a numeric ID, and is referenced as such from userspace. Usually these IDs are hardcoded in a namespace definition, for example:
+      <div class="code">
+<span class='code_primitive'>namespace</span> Process_IF<br/>
+{<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;execve&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class='code_integer'>0</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;createFileDescriptor&nbsp;=<span class='code_integer'>1</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;destroyFileDescriptor=<span class='code_integer'>2</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;getFileDescriptor&nbsp;&nbsp;&nbsp;&nbsp;=<span class='code_integer'>3</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;getPid&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class='code_integer'>4</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;sbrk&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class='code_integer'>5</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;waitPid&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class='code_integer'>6</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;setErrnoAddress&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class='code_integer'>7</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;setProcessPtrAddress&nbsp;=<span class='code_integer'>8</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;exit&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class='code_integer'>9</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;getMessageSender&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class='code_integer'>10</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;getCtty&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class='code_integer'>11</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;initialiseSignals&nbsp;&nbsp;&nbsp;&nbsp;=<span class='code_integer'>12</span>;<br/>
+&nbsp;&nbsp;<span class='code_primitive'>const&nbsp;int</span>&nbsp;setCtty&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;=<span class='code_integer'>13</span>;<br/>
+}
+      </div>
+    </p>
+
+    <p>Once a <code>Resource</code> object is created it itself is given a numeric ID which can be passed between kernel and user space. It is this that allows object orientated system calls (albeit without C++'s syntax sugar).</p>
+
+  <h2>Interprocess communication</h2>
+
+  <p>Staying with the object oriented theme, IPC is done through a remote method invocation-style mechanism. User processes can create "Resources", just like inside the kernel. The only difference is that these objects are actually implicitly created using a subclass of <code>Resource</code> - <code>RemoteResource</code>. It stores the PID of the creating process. When functions are added to it (Any member functions of a subclass of <code>Callable</code>) they, again, take an ID. If another process is given a <code>RemoteResource</code> ID, it can call functions on it just as if it were a kernel syscall resource. Implicitly the kernel stores the parameters given and executes the given function in the resource creator's address space, just as a signal handler would in a linux implementation.</p>
+
+  </div>
+  <div class="footer">Copyright James Molloy 2007 - james&lt;at&gt;jamesmolloy.co.uk</div>
+
+</body>
+
+</html>
